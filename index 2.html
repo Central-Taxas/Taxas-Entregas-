@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Central Tele Entregas Taxas</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0f1117;--surface:#181c27;--card:#1e2333;--border:#2a3045;--accent:#f97316;--accent-dim:rgba(249,115,22,0.12);--text:#e8eaf0;--muted:#8892a4;--green:#22c55e;--green-dim:rgba(34,197,94,0.12)}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;padding:24px 16px 48px}
+header{text-align:center;margin-bottom:32px}
+header h1{font-family:'Space Grotesk',sans-serif;font-size:1.8rem;font-weight:700;letter-spacing:-0.03em}
+header h1 span{color:var(--accent)}
+header p{color:var(--muted);font-size:0.9rem;margin-top:6px}
+.container{max-width:540px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:16px}
+label{display:block;font-size:0.78rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.search-wrap{position:relative;margin-bottom:4px}
+.search-wrap input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:13px 16px;font-size:1rem;color:var(--text);font-family:'Inter',sans-serif;outline:none;transition:border-color 0.15s}
+.search-wrap input:focus{border-color:var(--accent)}
+.search-wrap input::placeholder{color:var(--muted)}
+#dropdown{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;z-index:100;max-height:260px;overflow-y:auto;display:none}
+#dropdown.open{display:block}
+#dropdown div{padding:12px 16px;cursor:pointer;font-size:0.95rem;transition:background 0.1s}
+#dropdown div:hover{background:var(--accent-dim);color:var(--accent)}
+#dropdown div small{display:block;font-size:0.75rem;color:var(--muted);margin-top:2px}
+.input-section{display:none;margin-top:20px}
+.input-section.visible{display:block}
+select,input[type="number"]{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:13px 16px;font-size:1rem;color:var(--text);font-family:'Inter',sans-serif;outline:none;transition:border-color 0.15s;appearance:none}
+select:focus,input[type="number"]:focus{border-color:var(--accent)}
+select option{background:var(--card)}
+#result{display:none;background:var(--green-dim);border:1px solid rgba(34,197,94,0.3);border-radius:16px;padding:28px 24px;text-align:center}
+#result.visible{display:block}
+#result .store-name{font-size:0.8rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--green);margin-bottom:8px}
+#result .fee{font-family:'Space Grotesk',sans-serif;font-size:3.2rem;font-weight:700;color:#fff;letter-spacing:-0.03em;line-height:1}
+#result .fee-label{color:var(--muted);font-size:0.85rem;margin-top:8px}
+#result .rule-note{margin-top:14px;font-size:0.82rem;color:var(--muted);background:rgba(0,0,0,0.2);border-radius:8px;padding:8px 12px}
+#no-result{display:none;text-align:center;padding:20px;color:var(--muted);font-size:0.9rem}
+#no-result.visible{display:block}
+footer{text-align:center;margin-top:24px;color:var(--muted);font-size:0.78rem}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Central Tele Entregas <span>Taxas</span></h1>
+    <p>Consulte o valor da taxa por estabelecimento</p>
+  </header>
+  <div class="card">
+    <label>Estabelecimento</label>
+    <div class="search-wrap">
+      <input type="text" id="storeSearch" placeholder="Digite o nome do estabelecimento..." autocomplete="off">
+      <div id="dropdown"></div>
+    </div>
+    <div id="zoneSection" class="input-section">
+      <label>Selecione a zona</label>
+      <select id="zoneSelect"><option value="">— escolha —</option></select>
+    </div>
+    <div id="distSection" class="input-section">
+      <label>Distância em km</label>
+      <input type="number" id="distInput" placeholder="Ex: 2.5" min="0" step="0.1">
+    </div>
+  </div>
+  <div id="result">
+    <div class="store-name" id="rStoreName"></div>
+    <div class="fee" id="rFee"></div>
+    <div class="fee-label">taxa de entrega</div>
+    <div class="rule-note" id="rNote"></div>
+  </div>
+  <div id="no-result">Não foi possível calcular a taxa com os dados informados.</div>
+  <footer>Central Tele Entregas · Tabela de Taxas</footer>
+</div>
+<script>
+var STORES = [
+  // 10/15/20
+  {name:"Cookies",type:"cbt"},{name:"R25",type:"cbt"},{name:"March Med",type:"cbt"},
+  {name:"Tabacaria",type:"cbt"},{name:"Mega Cel",type:"cbt"},{name:"Cultura",type:"cbt"},
+  {name:"Mais Natural",type:"cbt"},{name:"Natsu",type:"cbt"},{name:"Elav",type:"cbt"},
+  {name:"Baita",type:"cbt"},{name:"Orgânicos",type:"cbt"},{name:"Paladar",type:"cbt"},
+  {name:"Daiane",type:"cbt"},{name:"Japinha",type:"cbt"},{name:"Maurinho",type:"cbt"},
+  {name:"Tri Lanches",type:"cbt"},{name:"Mania de Vestir",type:"cbt"},
+  {name:"Receita Caseira",type:"cbt"},{name:"Revelart",type:"cbt"},{name:"Vitafood",type:"cbt"},
+  {name:"Lavanderia",type:"cbt"},{name:"Arend",type:"cbt"},{name:"Alassio",type:"cbt"},
+  {name:"Cantinho do Memel",type:"cbt"},{name:"Juistree",type:"cbt"},
+  // Cidade 15/Trevo 20
+  {name:"Agatha",type:"agatha"},{name:"Amy",type:"agatha"},{name:"Kama",type:"agatha"},
+  {name:"Telos",type:"agatha"},{name:"Caseiros da Le",type:"agatha"},{name:"Terezinha",type:"agatha"},
+  // Orbita
+  {name:"Órbita",type:"orbita"},
+  // Nickel/Texas
+  {name:"Nickel",type:"nickel"},{name:"Texas",type:"nickel"},
+  // Rapanui
+  {name:"Rapanui",type:"rapanui"},
+  // Por distância
+  {name:"Mundo Animal",type:"mundoanimal"},
+  {name:"Liberty",type:"liberty"},
+  {name:"Bistrô",type:"bistro"},
+  {name:"Miray Sushi",type:"miray"},
+  // Tabela padrão
+  {name:"Mokai",type:"standard"},{name:"Duda",type:"standard"},{name:"Degusta",type:"standard"},
+  {name:"Farmácia Assoc.",type:"standard"},{name:"Arquidelícias",type:"standard"},
+  {name:"Itália",type:"standard"},{name:"Rei Pão Qjo",type:"standard"},{name:"Brahma",type:"standard"},
+  {name:"Tanara",type:"standard"},{name:"Joaninha",type:"standard"},{name:"Salles",type:"standard"},
+  {name:"Chiquinho",type:"standard"},{name:"Thauani",type:"standard"},{name:"Lauriane",type:"standard"},
+  // Tabela Primas
+  {name:"Lanche das Meninas",type:"primas"},{name:"Tevittos",type:"primas"},
+  {name:"Lotus Açaí",type:"primas"},{name:"Pastelaria Sem Noção",type:"primas"},
+  {name:"Xizaria Salles",type:"primas"},{name:"Youplace",type:"primas"},{name:"Mais Açaí",type:"primas"},
+  // Fixo 15
+  {name:"Mercado dos Óculos",type:"fixo15"},{name:"Noblesse",type:"fixo15"},{name:"Quitanda",type:"fixo15"},
+  // Joy Joy
+  {name:"Joy Joy",type:"joyjoy"}
+];
+
+var TYPES = {
+  cbt: {label:"Centro R$10 | Bairro R$15 | Trevo R$20", mode:"zone", zones:[{label:"Centro",fee:10},{label:"Bairro",fee:15},{label:"Trevo",fee:20}]},
+  agatha: {label:"Cidade R$15 | Trevo R$20", mode:"zone", zones:[{label:"Cidade",fee:15},{label:"Trevo",fee:20}]},
+  orbita: {label:"Centro R$12 | Bairro R$15 | Trevo R$20", mode:"zone", zones:[{label:"Centro",fee:12},{label:"Bairro",fee:15},{label:"Trevo",fee:20}]},
+  nickel: {label:"Petrópolis R$10 | São José e Outros R$15 | Trevo R$20", mode:"zone", zones:[{label:"Petrópolis",fee:10},{label:"São José e Outros",fee:15},{label:"Trevo",fee:20}]},
+  rapanui: {label:"Centro R$10 | Até 2km R$12 | Bairro R$15 | Trevo R$20", mode:"zone", zones:[{label:"Centro",fee:10},{label:"Até 2km",fee:12},{label:"Bairro",fee:15},{label:"Trevo",fee:20}]},
+  fixo15: {label:"Taxa fixa R$15", mode:"zone", zones:[{label:"Taxa fixa",fee:15}]},
+  mundoanimal: {label:"Até 2km R$10 | Acima R$15 | Trevo R$20", mode:"dist", distFn:function(km){var k=Math.floor(km);return k<=2?{fee:10,note:"Até 2km"}:k<=8?{fee:15,note:"Acima de 2km"}:{fee:20,note:"Trevo"}}},
+  liberty: {label:"Até 2km R$12 | Acima R$15 | Trevo R$20", mode:"dist", distFn:function(km){var k=Math.floor(km);return k<=2?{fee:12,note:"Até 2km"}:k<=8?{fee:15,note:"Acima de 2km"}:{fee:20,note:"Trevo"}}},
+  bistro: {label:"Até 2km R$10 | Até 2.9km R$12 | Acima R$15 | Trevo R$20", mode:"dist", distFn:function(km){return km<2?{fee:10,note:"Até 2km"}:km<3?{fee:12,note:"Até 2.9km"}:km<9?{fee:15,note:"Acima de 3km"}:{fee:20,note:"Trevo"}}},
+  miray: {label:"Até 1km R$10 | 2-3km R$12 | até 5km R$15 | até 8km R$18 | Trevo R$20", mode:"dist", distFn:function(km){var k=Math.floor(km);return k<=1?{fee:10,note:"Até 1km"}:k<=3?{fee:12,note:"Até 3km"}:k<=5?{fee:15,note:"Até 5km"}:k<=8?{fee:18,note:"Até 8km"}:{fee:20,note:"Trevo"}}},
+  standard: {label:"Tabela padrão por km", mode:"dist", distFn:function(km){var k=Math.floor(km);return k<=1?{fee:10,note:"Até 1km"}:k<=2?{fee:11,note:"Até 2km"}:k<=3?{fee:12,note:"Até 3km"}:k<=4?{fee:14,note:"Até 4km"}:k<=5?{fee:15,note:"Até 5km"}:k<=6?{fee:18,note:"Até 6km"}:k<=8?{fee:20,note:"Até 8km"}:k<=10?{fee:23,note:"Até 10km"}:k<=11?{fee:25,note:"Até 11km"}:null}},
+  primas: {label:"Tabela Primas por km", mode:"dist", distFn:function(km){var k=Math.floor(km);return k<=1?{fee:12,note:"Até 1km"}:k<=2?{fee:13,note:"Até 2km"}:k<=3?{fee:15,note:"Até 3km"}:k<=4?{fee:18,note:"Até 4km"}:k<=5?{fee:20,note:"Até 5km"}:k<=6?{fee:21,note:"Até 6km"}:k<=7?{fee:22,note:"Até 7km"}:k<=8?{fee:23,note:"Até 8km"}:k<=9?{fee:24,note:"Até 9km"}:k<=10?{fee:25,note:"Até 10km"}:k<=11?{fee:30,note:"Até 11km"}:k<=12?{fee:35,note:"Até 12km"}:null}},
+  joyjoy: {label:"Joy Joy — por bairro", mode:"zone", zones:[
+    {label:"Centro",fee:10},{label:"Rodrigues",fee:10},{label:"Vergueiro",fee:10},
+    {label:"Annes",fee:12},{label:"Lucas Araújo",fee:12},{label:"Vila Schell",fee:12},{label:"Cruzeiro",fee:12},
+    {label:"Berthier",fee:15},{label:"Boqueirão",fee:15},{label:"Cidade Nova",fee:15},{label:"Dona Eliza",fee:15},
+    {label:"Fátima",fee:15},{label:"Entre Rios",fee:15},{label:"Independente",fee:15},{label:"Menino Deus",fee:15},
+    {label:"Petrópolis",fee:15},{label:"Planaltina",fee:15},{label:"Sta Maria I",fee:15},{label:"São Cristóvão",fee:15},
+    {label:"Vera Cruz",fee:15},{label:"Victor Isler",fee:15},
+    {label:"Altos da Boa Vista",fee:18},{label:"Chácara Bela Vista",fee:18},{label:"Garden",fee:18},
+    {label:"Hípica",fee:18},{label:"José Luiz",fee:18},{label:"Nenê Graeff",fee:18},{label:"Operária",fee:18},
+    {label:"Parque Farroupilha",fee:18},{label:"Sta Maria II",fee:18},{label:"São Luiz",fee:18},{label:"Valinhos",fee:18},
+    {label:"Integração",fee:20},{label:"Maggi",fee:20},{label:"Roselândia",fee:20},{label:"Sta Marta",fee:20},
+    {label:"Sta Rita",fee:20},{label:"São José",fee:20},{label:"Via Sul",fee:20},
+    {label:"Vila Mattos",fee:22},
+    {label:"Bom Recreio",fee:25},{label:"Donaria",fee:25},{label:"Jardim América",fee:25},
+    {label:"Morada Além do Horizonte",fee:25},{label:"Morada do Sol",fee:25},
+    {label:"Nossa Sra Aparecida",fee:25},{label:"Parque do Sol",fee:25}
+  ]}
+};
+
+var sel = null;
+var si = document.getElementById('storeSearch');
+var dd = document.getElementById('dropdown');
+
+si.addEventListener('input', function() {
+  var q = si.value.trim().toLowerCase();
+  if (!q) { dd.classList.remove('open'); return; }
+  var starts = STORES.filter(function(s){ return s.name.toLowerCase().indexOf(q) === 0; });
+  var contains = STORES.filter(function(s){ return s.name.toLowerCase().indexOf(q) > 0; });
+  var m = starts.concat(contains);
+  if (!m.length) { dd.classList.remove('open'); return; }
+  dd.innerHTML = m.map(function(s){
+    return '<div onclick="pick('+STORES.indexOf(s)+')">'+s.name+'<small>'+TYPES[s.type].label+'</small></div>';
+  }).join('');
+  dd.classList.add('open');
+});
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.search-wrap')) dd.classList.remove('open');
+});
+
+function pick(idx) {
+  sel = STORES[idx];
+  si.value = sel.name;
+  dd.classList.remove('open');
+  var def = TYPES[sel.type];
+  hide();
+  var zs = document.getElementById('zoneSection');
+  var ds = document.getElementById('distSection');
+  var zsel = document.getElementById('zoneSelect');
+  var di = document.getElementById('distInput');
+  di.value = ''; zsel.value = '';
+  if (def.mode === 'zone') {
+    zs.classList.add('visible'); ds.classList.remove('visible');
+    zsel.innerHTML = '<option value="">— escolha —</option>' + def.zones.map(function(z,i){ return '<option value="'+i+'">'+z.label+' — R$'+z.fee+'</option>'; }).join('');
+    zsel.onchange = calc;
+  } else {
+    ds.classList.add('visible'); zs.classList.remove('visible');
+    di.oninput = calc;
+  }
+}
+
+function calc() {
+  if (!sel) return;
+  var def = TYPES[sel.type];
+  if (def.mode === 'zone') {
+    var idx = document.getElementById('zoneSelect').value;
+    if (!idx) { hide(); return; }
+    var z = def.zones[parseInt(idx)];
+    show(z.fee, z.label, def.label);
+  } else {
+    var km = parseFloat(document.getElementById('distInput').value);
+    if (isNaN(km) || km < 0) { hide(); return; }
+    var r = def.distFn(km);
+    if (!r) { hide(); document.getElementById('no-result').classList.add('visible'); return; }
+    show(r.fee, r.note, def.label);
+  }
+}
+
+function show(fee, zone, rule) {
+  document.getElementById('no-result').classList.remove('visible');
+  document.getElementById('rStoreName').textContent = sel.name;
+  document.getElementById('rFee').textContent = 'R$ '+fee+',00';
+  document.getElementById('rNote').textContent = zone + '  ·  ' + rule;
+  document.getElementById('result').classList.add('visible');
+}
+
+function hide() {
+  document.getElementById('result').classList.remove('visible');
+  document.getElementById('no-result').classList.remove('visible');
+}
+</script>
+</body>
+</html>
